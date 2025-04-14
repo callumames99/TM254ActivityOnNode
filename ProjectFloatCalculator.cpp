@@ -321,7 +321,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 #if __cplusplus >= 201103L
-std::wstring getEditBoxText(HWND parent, INT_PTR id) noexcept
+static std::wstring getEditBoxText(HWND parent, INT_PTR id) noexcept
 {
     std::wstring r;
     HWND dlg;
@@ -338,7 +338,7 @@ std::wstring getEditBoxText(HWND parent, INT_PTR id) noexcept
     return r;
 }
 #else
-std::wstring getEditBoxText(HWND parent, int id) noexcept
+static std::wstring getEditBoxText(HWND parent, int id) noexcept
 {
     wchar_t *pbuf;
     wchar_t buf[256] {};
@@ -376,7 +376,8 @@ std::wstring getEditBoxText(HWND parent, int id) noexcept
 
 
 
-unsigned int getEditBoxNum(HWND parent, int id) noexcept
+static unsigned int
+getEditBoxNum(HWND parent, int id) noexcept
 {
     wchar_t text[32] {};
     wchar_t *end = text+32;

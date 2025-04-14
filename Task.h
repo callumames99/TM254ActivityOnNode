@@ -1,10 +1,7 @@
 #pragma once
 #include <string>
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
+#include "framework.h"
 
 typedef unsigned int completion_time;
 
@@ -97,6 +94,10 @@ public:
     inline completion_time getBackfloat() const noexcept
     {
         return fla_;
+    }
+    inline completion_time getFloat() const noexcept
+    {
+        return flt_;
     }
     inline completion_time getEnd() const noexcept
     {

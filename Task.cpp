@@ -1,58 +1,8 @@
 #include "Task.h"
+#include "Brushes.h"
 
 #include <algorithm>
 
-
-class Brushes
-{
-public:
-
-    //static Brushes& get() noexcept { return g_; }
-
-    static HBRUSH getLightBrush() noexcept { return g_.getLightBrush_(); }
-    static HBRUSH getDarkBrush() noexcept { return g_.getDarkBrush_(); }
-    static HBRUSH getGreenBrush() noexcept { return g_.getGreenBrush_(); }
-    
-protected:
-    Brushes() noexcept
-        : blt_(NULL)
-        , bdk_(NULL)
-        , bgr_(NULL)
-        , good_(false)
-    {
-        blt_ = CreateSolidBrush(RGB(128,  64, 0));
-        bdk_ = CreateSolidBrush(RGB( 64,  32, 0));
-        bgr_ = CreateSolidBrush(RGB(  0, 128, 0));
-
-        good_ = blt_ && bdk_ && bgr_;
-    }
-    ~Brushes() noexcept
-    {
-        #define SAFE_DELETE_OBJECT(x) if (x) DeleteObject(x);
-
-        SAFE_DELETE_OBJECT(blt_);
-        SAFE_DELETE_OBJECT(bdk_);
-        SAFE_DELETE_OBJECT(bgr_);
-    }
-
-    HBRUSH getLightBrush_() const noexcept
-    {
-        return good_ ? blt_ : NULL;
-    }
-    HBRUSH getDarkBrush_() const noexcept
-    {
-        return good_ ? bdk_ : NULL;
-    }
-    HBRUSH getGreenBrush_() const noexcept
-    {
-        return good_ ? bgr_ : NULL;
-    }
-
-    HBRUSH blt_, bdk_, bgr_;
-    bool good_;
-
-    static Brushes g_;
-};
 
 Brushes Brushes::g_;
 
@@ -126,9 +76,10 @@ void Task::draw(PAINTSTRUCT& ps, wchar_t const *name) const noexcept
 
     TaskDrawAlignment al {};
     RECT rct {};
-    HGDIOBJ oldBrush;
+    HGDIOBJ oldBrush = NULL;
     COLORREF oldPen;
-    HBRUSH brush;
+    HBRUSH brush = NULL;
+    bool isCritical = false;
 
 
     if (wcscmp(name, L"Start") == 0)
@@ -141,6 +92,9 @@ void Task::draw(PAINTSTRUCT& ps, wchar_t const *name) const noexcept
         drawFinish(ps);
         return;
     }
+
+    /* Critical node? */
+    isCritical = (flt_ == 0);
 
     /* Get row and column extents */
     uiNumWH(ps.hdc, al.c[0], al.r[0], start_);
@@ -161,8 +115,16 @@ void Task::draw(PAINTSTRUCT& ps, wchar_t const *name) const noexcept
     boty_ = al.y[2];
 
     /* Light checker colours */
-    oldBrush = SelectObject(ps.hdc, Brushes::getLightBrush());
-    oldPen   = SetTextColor(ps.hdc, RGB(255, 255, 255));
+    if (isCritical)
+    {
+        oldBrush = SelectObject(ps.hdc, Brushes::getCritBrush());
+        oldPen   = SetTextColor(ps.hdc, RGB( 32,   0,   0));
+    }
+    else
+    {
+        oldBrush = SelectObject(ps.hdc, Brushes::getLightBrush());
+        oldPen   = SetTextColor(ps.hdc, RGB(255, 255, 255));
+    }
 
     /* Light checker row 0 */
     Rectangle(ps.hdc, px_, py_, al.x[0], al.y[0]);
@@ -174,7 +136,10 @@ void Task::draw(PAINTSTRUCT& ps, wchar_t const *name) const noexcept
     Rectangle(ps.hdc, al.x[1], al.y[1], al.x[2], al.y[2]);
 
     /* Dark checker colours */
-    SelectObject(ps.hdc, Brushes::getDarkBrush());
+    if (!isCritical)
+    {
+        SelectObject(ps.hdc, Brushes::getDarkBrush());
+    }
 
     /* Dark checker row 0 */
     Rectangle(ps.hdc, al.x[0], py_, al.x[1], al.y[0]);
@@ -243,9 +208,9 @@ void Task::drawStart(PAINTSTRUCT& ps) const noexcept
     unsigned int const padding = 16U;
     unsigned int const halfpad = padding >> 1;
     RECT rct {};
-    HGDIOBJ oldBrush;
+    HGDIOBJ oldBrush = NULL;
     COLORREF oldPen;
-    HBRUSH brush;
+    HBRUSH brush = NULL;
 
     /* Get text dimensions */
     DrawTextW(ps.hdc, L"Start", -1, &rct, DT_CALCRECT);
@@ -282,9 +247,9 @@ void Task::drawFinish(PAINTSTRUCT& ps) const noexcept
     unsigned int const halfpad = padding >> 1;
     unsigned int col, row1, row2;
     RECT rct {};
-    HGDIOBJ oldBrush;
+    HGDIOBJ oldBrush = NULL;
     COLORREF oldPen;
-    HBRUSH brush;
+    HBRUSH brush = NULL;
 
     wchar_t finishTimeBuf[64];
 
@@ -298,7 +263,7 @@ void Task::drawFinish(PAINTSTRUCT& ps) const noexcept
 
     /* Calculate dimensions */
     DrawTextW(ps.hdc, finishTimeBuf, -1, &rct, DT_CALCRECT);
-    col = max(col, padding + rct.right - rct.left);
+    col = std::max((unsigned long)col, padding + rct.right - rct.left);
     row2 = padding + rct.bottom - rct.top;
 
     /* Get full rect */

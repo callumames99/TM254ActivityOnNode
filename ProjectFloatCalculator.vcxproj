@@ -127,6 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Brushes.h" />
     <ClInclude Include="FileDlgMgr.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="ProjectFloatCalculator.h" />

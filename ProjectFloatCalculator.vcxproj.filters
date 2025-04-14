@@ -36,6 +36,9 @@
     <ClInclude Include="FileDlgMgr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Brushes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ProjectFloatCalculator.cpp">

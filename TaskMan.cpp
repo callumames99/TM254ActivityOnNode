@@ -1,4 +1,5 @@
 #include "TaskMan.h"
+#include "Brushes.h"
 
 #include <queue>
 
@@ -124,6 +125,7 @@ bool TaskMan::delTask(std::wstring const& name) noexcept
 }
 
 
+#if 0
 bool TaskMan::delTask(Task *t) noexcept
 {
     std::map<std::wstring, Task *>::iterator mit;
@@ -132,8 +134,8 @@ bool TaskMan::delTask(Task *t) noexcept
     /* Reverse find in map */
     for (mit = map_.begin(); mit != map_.end(); ++mit)
     {
-        if (mit->first.compare(L"Start") == 0 ||
-            mit->first.compare(L"Finish") == 0)
+        if (mit->second == &start_ ||
+            mit->second == &finish_)
         {
             continue;
         }
@@ -141,29 +143,119 @@ bool TaskMan::delTask(Task *t) noexcept
     }
     if (mit == map_.end()) return false;
 
-    /* Find graphs out of 'from' */
+    /* Remove from map */
+    map_.erase(mit);
+
+    /* Find graphs out of t */
     auto range = graph_.equal_range(t);
 
-    for (git = range.first; git != range.second; ++git)
+    for (git = range.first; git != range.second;)
     {
-        /* Find matching graph 'into' */
-        auto subrange = rgraph_.equal_range(git->second);
+        /* Save current iterator */
+        std::multimap<Task *, Task *>::iterator c0 = git++;
 
-        for (sit = subrange.first; sit != subrange.second; ++sit)
+        /* Find matching reverse graph */
+        auto subrange = rgraph_.equal_range(c0->second);
+
+        for (sit = subrange.first; sit != subrange.second;)
         {
-            if (git->first == sit->second)
+            /* Save current iterator */
+            std::multimap<Task *, Task *>::iterator c1 = sit++;
+
+            /* Match predicate */
+            if (t == c1->second)
             {
-                /* SCORE! Erase these and finish */
-                graph_. erase(git);
-                rgraph_.erase(sit);
-                map_.   erase(mit);
-                delete t;
-                return true;
+                /* SCORE! Erase this */
+                rgraph_.erase(c1);
             }
+        }
+
+        /* Erase graph */
+        graph_.erase(c0);
+    }
+
+    /* Find graphs 'into' */
+    range = rgraph_.equal_range(t);
+
+    for (git = range.first; git != range.second;)
+    {
+        /* Save current iterator */
+        std::multimap<Task *, Task *>::iterator c0 = git++;
+
+        /* Find matching reverse graph */
+        auto subrange = rgraph_.equal_range(c0->second);
+
+        for (sit = subrange.first; sit != subrange.second;)
+        {
+            /* Save current iterator */
+            std::multimap<Task *, Task *>::iterator c1 = sit++;
+
+            /* Match predicate */
+            if (t == c1->second)
+            {
+                /* SCORE! Erase this */
+                rgraph_.erase(c1);
+            }
+        }
+
+        /* Erase graph */
+        graph_.erase(c0);
+    }
+
+    /* Finally, delete the task */
+    delete t;
+
+    return true;
+}
+#endif
+
+
+/* TODO complexity of delTask() is not ideal but deleted function
+ * above is broken at the moment. */
+bool TaskMan::delTask(Task *t) noexcept
+{
+    std::map<std::wstring, Task *>::iterator mit;
+    std::multimap<Task *, Task *>::iterator git, cur;
+
+    /* Reverse find in map (not ideal) */
+    for (mit = map_.begin(); mit != map_.end(); ++mit)
+    {
+        if (mit->second == &start_ ||
+            mit->second == &finish_)
+        {
+            continue;
+        }
+        if (mit->second == t) break;
+    }
+    if (mit == map_.end()) return false;
+
+    /* Remove from map */
+    map_.erase(mit);
+
+    /* Iterate through graphs (not ideal) */
+    for (git = graph_.begin(); git != graph_.end();)
+    {
+        cur = git++;
+
+        if (cur->first == t || cur->second == t)
+        {
+            graph_.erase(t);
         }
     }
 
-    return false;
+    /* Iterate through reverse graphs (not ideal) */
+    for (git = rgraph_.begin(); git != rgraph_.end();)
+    {
+        cur = git++;
+
+        if (cur->first == t || cur->second == t)
+        {
+            rgraph_.erase(t);
+        }
+    }
+
+    /* Done */
+    return true;
 }
 
 
@@ -576,19 +668,38 @@ void TaskMan::draw(PAINTSTRUCT& ps) noexcept
     std::map<std::wstring, Task *>::const_iterator it;
     std::multimap<Task *, Task *>::const_iterator git;
     std::set<Task *>::const_iterator sit;
+    std::set<Task *> critical;
     HGDIOBJ old;
 
     /* Draw task tables */
     for (it = map_.cbegin(); it != map_.cend(); ++it)
     {
         it->second->draw(ps, it->first.c_str());
+
+        /* If critical, signal */
+        if (it->second->getFloat() == 0)
+        {
+            critical.insert(it->second);
+        }
     }
 
     /* Draw graphs */
     for (git = graph_.cbegin(); git != graph_.cend(); ++git)
     {
         MoveToEx(ps.hdc, git->first->GetOutX(), git->first->GetOutY(), NULL);
-        LineTo(ps.hdc, git->second->GetInX(), git->second->GetInY());
+
+        /* Critical path? */
+        if (critical.find(git->first ) != critical.cend() &&
+            critical.find(git->second) != critical.cend())
+        {
+            old = SelectObject(ps.hdc, Brushes::getCritPen());
+            LineTo(ps.hdc, git->second->GetInX(), git->second->GetInY());
+            SelectObject(ps.hdc, old);
+        }
+        else
+        {
+            LineTo(ps.hdc, git->second->GetInX(), git->second->GetInY());
+        }
     }
 
     /* Draw selections */
