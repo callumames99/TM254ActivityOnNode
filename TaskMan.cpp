@@ -239,7 +239,7 @@ bool TaskMan::delTask(Task *t) noexcept
 
         if (cur->first == t || cur->second == t)
         {
-            graph_.erase(git);
+            graph_.erase(cur);
         }
     }
 
@@ -250,7 +250,7 @@ bool TaskMan::delTask(Task *t) noexcept
 
         if (cur->first == t || cur->second == t)
         {
-            rgraph_.erase(git);
+            rgraph_.erase(cur);
         }
     }
 
